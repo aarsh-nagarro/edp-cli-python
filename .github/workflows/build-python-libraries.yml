@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'edp_cli.py'
-      - '.github/workflows/build-py.yml'
+      - '.github/workflows/build-python-libraries.yml'
   workflow_dispatch:
 
 jobs:
