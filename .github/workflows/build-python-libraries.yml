@@ -34,10 +34,19 @@ jobs:
         run: |
           pyinstaller --onefile edp_cli.py --name edp_cli
 
-      - name: Debug dist folder contents
+      - name: Debug dist folder contents (Linux/macOS)
+        if: runner.os != 'Windows'
         run: |
           echo "Listing dist directory:"
           ls -la dist
+
+      - name: Debug dist folder contents (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Output "Listing dist directory:"
+          Get-ChildItem -Path dist | Format-List
+
 
       - name: Create zip (Linux/macOS)
         if: runner.os != 'Windows'
