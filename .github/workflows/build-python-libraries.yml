@@ -1,4 +1,4 @@
-name: Build Python Binary with PyInstaller
+name: Build Python Binaries with PyInstaller
 
 on:
   workflow_dispatch:
@@ -8,45 +8,49 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
 
-      - name: Install PyInstaller
-        run: pip install pyinstaller
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install typer[all] pyinstaller
 
-      - name: Build binary
-        run: |
-          pyinstaller --onefile --clean --strip edp_cli.py
-          mkdir -p dist
-          mv dist/edp_cli dist/edp_cli-ubuntu
+    - name: Build binary
+      run: |
+        pyinstaller --onefile edp_cli.py --name edp_cli
 
-      - name: Zip binary
-        run: |
-          cd dist
-          zip edp_cli_binary.zip edp_cli-ubuntu
+    - name: Zip binary
+      run: |
+        cd dist
+        zip edp_cli-${{ matrix.os }}.zip edp_cli* || zip edp_cli-${{ matrix.os }}.zip edp_cli.exe
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: edp_cli_binary
-          path: dist/edp_cli_binary.zip
+    - name: Upload zipped binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: edp-cli-${{ matrix.os }}
+        path: dist/edp_cli-${{ matrix.os }}.zip
 
-      - name: Commit binary to repo
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull
-          mkdir -p binaries/ubuntu-latest
-          cp dist/edp_cli-ubuntu binaries/ubuntu-latest/edp_cli
-          git add binaries/
-          git commit -m "Add edp_cli binary for ubuntu-latest"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          git push origin main
+    - name: Commit binary to repo
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git pull
+        mkdir -p binaries/${{ matrix.os }}
+        cp dist/edp_cli* binaries/${{ matrix.os }}/ || cp dist/edp_cli.exe binaries/${{ matrix.os }}/
+        git add binaries/
+        git commit -m "Add edp_cli binary for ${{ matrix.os }}"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
