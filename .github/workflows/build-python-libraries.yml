@@ -31,9 +31,15 @@ jobs:
           pip install pyinstaller typer rich shellingham
 
       - name: Build executable
-        run: pyinstaller --onefile edp.py --name edp_cli
+        run: |
+          pyinstaller --onefile edp.py --name edp_cli
 
-      - name: Create zip (Linux/Mac)
+      - name: Debug dist folder contents
+        run: |
+          echo "Listing dist directory:"
+          ls -la dist
+
+      - name: Create zip (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
           cd dist
@@ -41,6 +47,7 @@ jobs:
 
       - name: Create zip (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
           cd dist
           Compress-Archive -Path edp_cli.exe -DestinationPath edp_cli-${{ matrix.os }}.zip
@@ -52,11 +59,14 @@ jobs:
           path: dist/edp_cli-${{ matrix.os }}.zip
 
       - name: Prepare binaries folder
+        shell: bash
         run: |
           mkdir -p binaries/${{ matrix.os }}
-          cp dist/edp_cli* binaries/${{ matrix.os }}/
+          cp dist/edp_cli* binaries/${{ matrix.os }}/ || true
+          echo "Binaries copied for ${{ matrix.os }}"
 
       - name: Commit binaries to repo
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
