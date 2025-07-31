@@ -3,7 +3,7 @@ name: Build Python CLI
 on:
   push:
     paths:
-      - 'edp.py'
+      - 'edp_cli.py'
       - '.github/workflows/build-py.yml'
   workflow_dispatch:
 
