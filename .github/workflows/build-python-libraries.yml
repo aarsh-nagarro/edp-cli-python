@@ -1,0 +1,59 @@
+name: Build Python CLI Binaries
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install typer pyinstaller
+
+      - name: Build binary with PyInstaller
+        run: |
+          pyinstaller --onefile --clean edp_cli.py
+
+      - name: Zip the binary
+        run: |
+          mkdir -p zipped
+          cp dist/edp_cli* ./zipped/
+          cd zipped
+          zip edp-cli-${{ matrix.os }}.zip edp_cli*
+
+      - name: Upload zip as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: edp-cli-${{ matrix.os }}
+          path: zipped/edp-cli-${{ matrix.os }}.zip
+
+      - name: Commit binaries to repo
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "you@example.com"
+          git pull origin main
+          mkdir -p binaries/${{ matrix.os }}
+          cp dist/edp_cli* binaries/${{ matrix.os }}/
+          git add binaries/
+          git commit -m "Add edp_cli binary for ${{ matrix.os }}"
+          git push origin main
+        env:
+          # Required for committing from GitHub Actions
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
