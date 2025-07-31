@@ -11,46 +11,60 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install typer[all] pyinstaller
+      - name: Install dependencies
+        run: pip install typer[all] pyinstaller
 
-    - name: Build binary
-      run: |
-        pyinstaller --onefile edp_cli.py --name edp_cli
+      - name: Build binary with PyInstaller
+        run: pyinstaller --onefile edp_cli.py
 
-    - name: Zip binary
-      run: |
-        cd dist
-        zip edp_cli-${{ matrix.os }}.zip edp_cli* || zip edp_cli-${{ matrix.os }}.zip edp_cli.exe
+      - name: Move binary to dist
+        run: |
+          mkdir -p dist
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            mv dist/edp_cli.exe dist/edp_cli.exe
+          elif [[ "$RUNNER_OS" == "macOS" || "$RUNNER_OS" == "Linux" ]]; then
+            mv dist/edp_cli dist/edp_cli
+          fi
+        shell: bash
 
-    - name: Upload zipped binary
-      uses: actions/upload-artifact@v4
-      with:
-        name: edp-cli-${{ matrix.os }}
-        path: dist/edp_cli-${{ matrix.os }}.zip
+      - name: Zip binary on Linux/macOS
+        if: runner.os != 'Windows'
+        run: |
+          cd dist
+          zip edp_cli-${{ runner.os }}.zip edp_cli
 
-    - name: Commit binary to repo
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git pull
-        mkdir -p binaries/${{ matrix.os }}
-        cp dist/edp_cli* binaries/${{ matrix.os }}/ || cp dist/edp_cli.exe binaries/${{ matrix.os }}/
-        git add binaries/
-        git commit -m "Add edp_cli binary for ${{ matrix.os }}"
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Zip binary on Windows
+        if: runner.os == 'Windows'
+        run: |
+          powershell Compress-Archive -Path dist\edp_cli.exe -DestinationPath dist\edp_cli-${{ runner.os }}.zip
+
+      - name: Upload zipped binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: edp_cli_${{ runner.os }}
+          path: dist/edp_cli-${{ runner.os }}.zip
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit zipped binary to repo
+        run: |
+          git pull origin main
+          mkdir -p binaries/${{ runner.os }}
+          cp dist/edp_cli-${{ runner.os }}.zip binaries/${{ runner.os }}/
+          git add binaries/
+          git commit -m "Add edp_cli binary for ${{ runner.os }}"
+          git push
