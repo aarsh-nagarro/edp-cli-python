@@ -32,7 +32,7 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller --onefile edp.py --name edp_cli
+          pyinstaller --onefile edp_cli.py --name edp_cli
 
       - name: Debug dist folder contents
         run: |
